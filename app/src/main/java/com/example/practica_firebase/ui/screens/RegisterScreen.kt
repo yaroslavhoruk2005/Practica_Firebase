@@ -17,14 +17,20 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.practica_firebase.ui.viewmodel.AuthViewModel
 
 @Composable
 fun RegisterScreen(
-    onCancelClick: () -> Unit = {}
+    viewModel: AuthViewModel = viewModel(),
+    onCancelClick: () -> Unit = {},
+    onRegisterSuccess: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -43,9 +49,22 @@ fun RegisterScreen(
             textAlign = TextAlign.Center
         )
 
+        errorMessage?.let {
+            Text(
+                text = it,
+                color = Color.Red,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(bottom = 16.dp),
+                textAlign = TextAlign.Center
+            )
+        }
+
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = {
+                email = it
+                errorMessage = null
+            },
             label = { Text("Email") },
             modifier = Modifier
                 .fillMaxWidth()
@@ -58,12 +77,16 @@ fun RegisterScreen(
                 unfocusedLabelColor = Color.Gray
             ),
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            enabled = !isLoading
         )
 
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = {
+                password = it
+                errorMessage = null
+            },
             label = { Text("Contraseña") },
             modifier = Modifier
                 .fillMaxWidth()
@@ -85,12 +108,16 @@ fun RegisterScreen(
                 )
             },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            enabled = !isLoading
         )
 
         OutlinedTextField(
             value = confirmPassword,
-            onValueChange = { confirmPassword = it },
+            onValueChange = {
+                confirmPassword = it
+                errorMessage = null
+            },
             label = { Text("Repite contraseña") },
             modifier = Modifier
                 .fillMaxWidth()
@@ -112,11 +139,35 @@ fun RegisterScreen(
                 )
             },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            enabled = !isLoading
         )
 
         Button(
-            onClick = { /* VACIO */ },
+            onClick = {
+                when {
+                    email.isBlank() || password.isBlank() || confirmPassword.isBlank() -> {
+                        errorMessage = "Por favor completa todos los campos"
+                    }
+                    password != confirmPassword -> {
+                        errorMessage = "Las contraseñas no coinciden"
+                    }
+                    password.length < 6 -> {
+                        errorMessage = "La contraseña debe tener al menos 6 caracteres"
+                    }
+                    else -> {
+                        isLoading = true
+                        viewModel.register(email, password) { success, error ->
+                            isLoading = false
+                            if (success) {
+                                onRegisterSuccess()
+                            } else {
+                                errorMessage = error ?: "Error al registrarse"
+                            }
+                        }
+                    }
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp)
@@ -124,24 +175,33 @@ fun RegisterScreen(
             shape = RoundedCornerShape(25.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF5B7BA6)
-            )
+            ),
+            enabled = !isLoading
         ) {
-            Text(
-                text = "Registrate",
-                fontSize = 16.sp,
-                color = Color.White
-            )
+            if (isLoading) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                Text(
+                    text = "Regístrate",
+                    fontSize = 16.sp,
+                    color = Color.White
+                )
+            }
         }
 
         Button(
             onClick = onCancelClick,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp),
+                .height(40.dp),
             shape = RoundedCornerShape(25.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF5B7BA6)
-            )
+            ),
+            enabled = !isLoading
         ) {
             Text(
                 text = "Cancelar",
